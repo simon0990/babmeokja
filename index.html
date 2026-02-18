@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>밥먹자 - 오늘 뭐 먹지?</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      color: #e94560;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: #888;
+      margin-bottom: 2.5rem;
+    }
+
+    .result-area {
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .food-image-wrap {
+      width: 220px;
+      height: 220px;
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 1.2rem;
+      background: #2a2a3e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+
+    .food-image-wrap.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .food-image-wrap.rolling {
+      opacity: 0.6;
+      transform: scale(0.95);
+    }
+
+    .food-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: opacity 0.3s ease;
+    }
+
+    .food-image-placeholder {
+      font-size: 4rem;
+      color: #444;
+    }
+
+    .category-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.8rem;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+    }
+
+    .category-badge.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .food-name {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1.4;
+      opacity: 0;
+      transform: scale(0.8);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      min-height: 3rem;
+    }
+
+    .food-name.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .food-description {
+      font-size: 0.9rem;
+      color: #999;
+      margin-top: 0.8rem;
+      opacity: 0;
+      transition: opacity 0.4s ease 0.2s;
+    }
+
+    .food-description.show {
+      opacity: 1;
+    }
+
+    .pick-btn {
+      background: #e94560;
+      color: white;
+      border: none;
+      padding: 1rem 3rem;
+      font-size: 1.3rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pick-btn:hover {
+      background: #c73650;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(233, 69, 96, 0.3);
+    }
+
+    .pick-btn:active {
+      transform: translateY(0);
+    }
+
+    .pick-btn.rolling {
+      animation: shake 0.1s infinite;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-3px); }
+      75% { transform: translateX(3px); }
+    }
+
+    .counter {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: #555;
+    }
+
+    /* Category colors */
+    .cat-korean { background: #2d4a3e; color: #7ecba1; }
+    .cat-chinese { background: #4a2d2d; color: #e88888; }
+    .cat-japanese { background: #2d3a4a; color: #88b8e8; }
+    .cat-western { background: #4a3d2d; color: #e8c888; }
+    .cat-asian { background: #3d2d4a; color: #c888e8; }
+    .cat-snack { background: #4a4a2d; color: #e8e888; }
+    .cat-healthy { background: #2d4a42; color: #88e8d0; }
+
+    .rolling-text {
+      animation: fadeInOut 0.08s infinite;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>밥먹자</h1>
+    <p class="subtitle">버튼을 누르면 오늘의 메뉴를 골라드립니다</p>
+
+    <div class="result-area">
+      <div id="foodImageWrap" class="food-image-wrap">
+        <span class="food-image-placeholder">?</span>
+      </div>
+      <span id="categoryBadge" class="category-badge"></span>
+      <div id="foodName" class="food-name"></div>
+      <div id="foodDesc" class="food-description"></div>
+    </div>
+
+    <button class="pick-btn" id="pickBtn" onclick="pickFood()">뭐 먹을까?</button>
+
+    <div class="counter" id="counter"></div>
+  </div>
+
+  <script>
+    const foods = [
+      // === 한식 ===
+      { name: "간짜장", category: "한식", categoryClass: "cat-korean", desc: "볶은 춘장에 고기와 양파를 듬뿍", img: "jajangmyeon" },
+      { name: "쟁반짜장", category: "한식", categoryClass: "cat-korean", desc: "넓은 쟁반에 면과 짜장을 함께", img: "jajangmyeon noodles" },
+      { name: "삼선짬뽕", category: "한식", categoryClass: "cat-korean", desc: "해산물 세 가지가 들어간 매콤한 짬뽕", img: "jjamppong spicy seafood noodle" },
+      { name: "깐풍기", category: "한식", categoryClass: "cat-korean", desc: "바삭하게 튀긴 닭에 매콤달콤 소스", img: "korean sweet chili fried chicken" },
+      { name: "제육볶음 정식", category: "한식", categoryClass: "cat-korean", desc: "매콤한 돼지고기 볶음에 밥 한 공기", img: "jeyuk bokkeum spicy pork" },
+      { name: "된장찌개와 계란말이 정식", category: "한식", categoryClass: "cat-korean", desc: "구수한 된장찌개에 폭신한 계란말이", img: "doenjang jjigae korean" },
+      { name: "차돌된장찌개", category: "한식", categoryClass: "cat-korean", desc: "차돌박이가 들어간 진한 된장찌개", img: "doenjang jjigae" },
+      { name: "청국장찌개", category: "한식", categoryClass: "cat-korean", desc: "냄새는 강하지만 맛은 깊은", img: "cheonggukjang korean stew" },
+      { name: "순두부찌개", category: "한식", categoryClass: "cat-korean", desc: "부들부들 순두부에 달걀을 톡", img: "sundubu jjigae soft tofu stew" },
+      { name: "김치찌개", category: "한식", categoryClass: "cat-korean", desc: "잘 익은 김치와 돼지고기의 조합", img: "kimchi jjigae stew" },
+      { name: "부대찌개", category: "한식", categoryClass: "cat-korean", desc: "소시지, 햄, 라면사리 가득", img: "budae jjigae army stew" },
+      { name: "갈비찜", category: "한식", categoryClass: "cat-korean", desc: "달콤 짭짤하게 조린 소갈비", img: "galbi jjim braised short ribs" },
+      { name: "LA갈비구이", category: "한식", categoryClass: "cat-korean", desc: "달짝지근한 양념의 구운 갈비", img: "korean bbq galbi" },
+      { name: "생삼겹살 구이", category: "한식", categoryClass: "cat-korean", desc: "두툼하게 썬 삼겹살을 불판에", img: "samgyeopsal pork belly grill" },
+      { name: "대패삼겹살", category: "한식", categoryClass: "cat-korean", desc: "얇게 썬 삼겹살을 파채와 함께", img: "thin sliced pork belly korean" },
+      { name: "목살 구이", category: "한식", categoryClass: "cat-korean", desc: "결 따라 씹히는 목살의 맛", img: "korean grilled pork neck" },
+      { name: "소고기 육회 비빔밥", category: "한식", categoryClass: "cat-korean", desc: "신선한 육회 위에 참기름과 고추장", img: "yukhoe bibimbap raw beef" },
+      { name: "전주식 돌솥비빔밥", category: "한식", categoryClass: "cat-korean", desc: "뜨거운 돌솥에 누룽지까지", img: "dolsot bibimbap stone pot" },
+      { name: "낙지볶음 정식", category: "한식", categoryClass: "cat-korean", desc: "매콤하게 볶은 산낙지에 소면 사리", img: "nakji bokkeum spicy octopus" },
+      { name: "매운 닭볶음탕", category: "한식", categoryClass: "cat-korean", desc: "감자와 당면이 들어간 매운 닭볶음", img: "dakbokkeum spicy chicken stew" },
+      { name: "닭한마리 칼국수", category: "한식", categoryClass: "cat-korean", desc: "통닭을 푹 고아낸 국물에 칼국수", img: "dak hanmari chicken soup" },
+      { name: "삼계탕", category: "한식", categoryClass: "cat-korean", desc: "어린 닭에 인삼, 대추, 찹쌀을 넣고 푹", img: "samgyetang ginseng chicken soup" },
+      { name: "설렁탕", category: "한식", categoryClass: "cat-korean", desc: "소뼈를 오래 고아낸 뽀얀 국물", img: "seolleongtang ox bone soup" },
+      { name: "곰탕", category: "한식", categoryClass: "cat-korean", desc: "진하게 우려낸 소고기 곰탕", img: "gomtang beef bone soup" },
+      { name: "갈비탕", category: "한식", categoryClass: "cat-korean", desc: "소갈비를 넣고 맑게 끓인 탕", img: "galbitang short rib soup" },
+      { name: "감자탕", category: "한식", categoryClass: "cat-korean", desc: "돼지 등뼈와 감자를 푹 고아낸", img: "gamjatang pork bone potato soup" },
+      { name: "해물파전과 막걸리", category: "한식", categoryClass: "cat-korean", desc: "바삭한 해물파전에 막걸리 한 사발", img: "haemul pajeon seafood pancake" },
+      { name: "김치전", category: "한식", categoryClass: "cat-korean", desc: "신 김치로 바삭하게 부친 전", img: "kimchijeon kimchi pancake" },
+      { name: "떡볶이 + 순대 + 튀김 세트", category: "한식", categoryClass: "cat-korean", desc: "분식집 국민 조합", img: "tteokbokki sundae set" },
+      { name: "잔치국수", category: "한식", categoryClass: "cat-korean", desc: "멸치 육수에 소면, 김, 양념장", img: "janchi guksu korean noodle soup" },
+      { name: "비빔국수", category: "한식", categoryClass: "cat-korean", desc: "매콤새콤 양념장에 비빈 소면", img: "bibim guksu spicy cold noodles" },
+      { name: "칼국수", category: "한식", categoryClass: "cat-korean", desc: "손으로 썬 면을 시원한 육수에", img: "kalguksu knife cut noodles" },
+      { name: "수제비", category: "한식", categoryClass: "cat-korean", desc: "쫄깃한 반죽을 뜯어 넣은 국물", img: "sujebi korean dough soup" },
+      { name: "물냉면", category: "한식", categoryClass: "cat-korean", desc: "시원한 육수에 쫄깃한 면, 식초 톡", img: "mul naengmyeon cold noodles" },
+      { name: "비빔냉면", category: "한식", categoryClass: "cat-korean", desc: "매콤달콤 양념에 비빈 냉면", img: "bibim naengmyeon spicy cold noodles" },
+      { name: "함흥냉면", category: "한식", categoryClass: "cat-korean", desc: "감자 전분 면에 매콤한 양념", img: "hamheung naengmyeon" },
+      { name: "육개장", category: "한식", categoryClass: "cat-korean", desc: "소고기와 대파를 넣은 얼큰한 국", img: "yukgaejang spicy beef soup" },
+      { name: "해장국", category: "한식", categoryClass: "cat-korean", desc: "콩나물이나 선지를 넣은 해장용 국", img: "haejangguk hangover soup" },
+      { name: "추어탕", category: "한식", categoryClass: "cat-korean", desc: "미꾸라지를 갈아 넣은 진한 탕", img: "chueo tang loach soup" },
+      { name: "보쌈 정식", category: "한식", categoryClass: "cat-korean", desc: "삶은 돼지고기에 김치와 쌈장", img: "bossam boiled pork wraps" },
+      { name: "족발", category: "한식", categoryClass: "cat-korean", desc: "쫀득한 족발에 새우젓 한 점", img: "jokbal pig feet korean" },
+      { name: "간장게장 정식", category: "한식", categoryClass: "cat-korean", desc: "밥도둑 간장게장에 밥 한 공기", img: "ganjang gejang soy crab" },
+      { name: "양념게장", category: "한식", categoryClass: "cat-korean", desc: "매콤달콤 양념에 절인 게", img: "yangnyeom gejang spicy crab" },
+      { name: "고등어 조림 정식", category: "한식", categoryClass: "cat-korean", desc: "무와 함께 매콤하게 조린 고등어", img: "godeungeo jorim braised mackerel" },
+      { name: "생선구이 정식 (갈치)", category: "한식", categoryClass: "cat-korean", desc: "소금 간 갈치를 노릇하게 구워", img: "grilled galchi cutlassfish" },
+      { name: "아귀찜", category: "한식", categoryClass: "cat-korean", desc: "콩나물과 미나리, 매콤한 아귀찜", img: "agwijjim spicy monkfish" },
+      { name: "해물탕", category: "한식", categoryClass: "cat-korean", desc: "각종 해산물을 넣고 얼큰하게", img: "haemultang seafood stew" },
+      { name: "조개구이 모듬", category: "한식", categoryClass: "cat-korean", desc: "가리비, 조개, 새우를 불판에", img: "grilled shellfish clams" },
+      { name: "닭갈비", category: "한식", categoryClass: "cat-korean", desc: "매콤한 양념 닭고기에 떡과 채소", img: "dakgalbi spicy chicken stir fry" },
+      { name: "찜닭", category: "한식", categoryClass: "cat-korean", desc: "간장 양념에 당면과 채소가 가득", img: "jjimdak braised chicken soy" },
+      { name: "오리불고기", category: "한식", categoryClass: "cat-korean", desc: "양념에 재운 오리고기를 불판에", img: "korean grilled duck bulgogi" },
+
+      // === 중식 ===
+      { name: "마파두부덮밥", category: "중식", categoryClass: "cat-chinese", desc: "얼얼한 마파두부를 밥 위에", img: "mapo tofu rice bowl" },
+      { name: "유린기", category: "중식", categoryClass: "cat-chinese", desc: "바삭한 닭에 새콤달콤 소스를 끼얹은", img: "chinese crispy chicken scallion sauce" },
+      { name: "꿔바로우", category: "중식", categoryClass: "cat-chinese", desc: "탕수육과는 다른 바삭함, 꿔바로우", img: "guobaorou crispy pork" },
+      { name: "탕수육", category: "중식", categoryClass: "cat-chinese", desc: "바삭한 돼지고기에 새콤달콤 소스", img: "tangsuyuk sweet sour pork" },
+      { name: "양장피", category: "중식", categoryClass: "cat-chinese", desc: "해파리와 채소를 겨자 소스에", img: "yangjangpi jellyfish salad" },
+      { name: "짬뽕밥", category: "중식", categoryClass: "cat-chinese", desc: "짬뽕 국물에 밥을 말아서", img: "jjamppong rice spicy seafood" },
+      { name: "마라탕", category: "중식", categoryClass: "cat-chinese", desc: "얼얼하고 매콤한 마라 국물에 원하는 재료를", img: "malatang spicy hot pot soup" },
+      { name: "마라샹궈", category: "중식", categoryClass: "cat-chinese", desc: "마라 양념에 볶은 고기와 채소", img: "mala xiangguo stir fry" },
+      { name: "훠궈 (소고기 + 해산물)", category: "중식", categoryClass: "cat-chinese", desc: "두 가지 육수에 샤브샤브", img: "chinese hot pot huoguo" },
+      { name: "딤섬 모듬", category: "중식", categoryClass: "cat-chinese", desc: "하가우, 슈마이, 샤오롱바오 등", img: "dim sum assorted dumplings" },
+      { name: "샤오롱바오", category: "중식", categoryClass: "cat-chinese", desc: "육즙이 터지는 상하이식 만두", img: "xiaolongbao soup dumplings" },
+      { name: "볶음밥 (새우볶음밥)", category: "중식", categoryClass: "cat-chinese", desc: "큰 새우가 들어간 웍 볶음밥", img: "shrimp fried rice wok" },
+      { name: "라조기", category: "중식", categoryClass: "cat-chinese", desc: "매콤하게 볶은 닭튀김", img: "laziji sichuan spicy fried chicken" },
+      { name: "고추잡채", category: "중식", categoryClass: "cat-chinese", desc: "고추와 돼지고기를 매콤하게 볶은", img: "chinese pepper pork stir fry" },
+      { name: "잡채밥", category: "중식", categoryClass: "cat-chinese", desc: "중국식 잡채를 밥 위에", img: "japchae rice bowl" },
+      { name: "울면", category: "중식", categoryClass: "cat-chinese", desc: "걸쭉한 해물 소스에 면을 비벼", img: "ulmyeon thick seafood noodle soup" },
+
+      // === 일식 ===
+      { name: "참치 중뱃살이 포함된 스시 모듬", category: "일식", categoryClass: "cat-japanese", desc: "참치 중뱃살, 연어, 광어 등 모듬", img: "tuna sushi assorted nigiri" },
+      { name: "연어 사시미 정식", category: "일식", categoryClass: "cat-japanese", desc: "두툼하게 썬 연어회에 밥과 미소시루", img: "salmon sashimi japanese" },
+      { name: "광어 사시미", category: "일식", categoryClass: "cat-japanese", desc: "쫄깃한 광어회에 간장과 와사비", img: "hirame flatfish sashimi" },
+      { name: "소고기 덮밥 (규동)", category: "일식", categoryClass: "cat-japanese", desc: "달콤짭짤한 소고기를 밥 위에", img: "gyudon beef bowl japanese" },
+      { name: "돈카츠 정식", category: "일식", categoryClass: "cat-japanese", desc: "두툼한 등심 돈카츠에 양배추 샐러드", img: "tonkatsu pork cutlet japanese" },
+      { name: "히레카츠 정식", category: "일식", categoryClass: "cat-japanese", desc: "부드러운 안심 돈카츠", img: "hire katsu pork tenderloin cutlet" },
+      { name: "치즈카츠", category: "일식", categoryClass: "cat-japanese", desc: "모짜렐라 치즈가 쭉 늘어나는 카츠", img: "cheese katsu cutlet" },
+      { name: "카츠카레", category: "일식", categoryClass: "cat-japanese", desc: "바삭한 돈카츠 위에 걸쭉한 카레", img: "katsu curry japanese" },
+      { name: "카츠동", category: "일식", categoryClass: "cat-japanese", desc: "돈카츠를 달걀로 풀어 밥 위에", img: "katsudon pork cutlet egg bowl" },
+      { name: "라멘 (돈코츠)", category: "일식", categoryClass: "cat-japanese", desc: "진한 돼지뼈 육수의 하카타 라멘", img: "tonkotsu ramen pork bone" },
+      { name: "라멘 (쇼유)", category: "일식", categoryClass: "cat-japanese", desc: "간장 베이스의 맑은 도쿄식 라멘", img: "shoyu ramen soy sauce" },
+      { name: "라멘 (미소)", category: "일식", categoryClass: "cat-japanese", desc: "된장 베이스의 삿포로식 라멘", img: "miso ramen japanese" },
+      { name: "츠케멘", category: "일식", categoryClass: "cat-japanese", desc: "진한 소스에 차가운 면을 찍어 먹는", img: "tsukemen dipping ramen" },
+      { name: "우동 (가케우동)", category: "일식", categoryClass: "cat-japanese", desc: "맑은 다시 국물에 쫄깃한 우동면", img: "udon noodle soup japanese" },
+      { name: "냄비 우동", category: "일식", categoryClass: "cat-japanese", desc: "뚝배기에 끓인 뜨끈한 우동", img: "nabeyaki udon hot pot" },
+      { name: "자루소바", category: "일식", categoryClass: "cat-japanese", desc: "차가운 메밀면을 쯔유에 찍어", img: "zaru soba cold buckwheat noodle" },
+      { name: "오니기리와 미소시루 세트", category: "일식", categoryClass: "cat-japanese", desc: "주먹밥과 따뜻한 된장국", img: "onigiri miso soup japanese" },
+      { name: "연어 포케 덮밥", category: "일식", categoryClass: "cat-japanese", desc: "신선한 연어에 아보카도와 특제 소스", img: "salmon poke bowl" },
+      { name: "장어덮밥 (우나동)", category: "일식", categoryClass: "cat-japanese", desc: "달콤한 양념을 바른 구운 장어", img: "unadon grilled eel rice" },
+      { name: "텐동 (새우튀김 덮밥)", category: "일식", categoryClass: "cat-japanese", desc: "바삭한 새우 텐푸라를 밥 위에", img: "tendon shrimp tempura bowl" },
+      { name: "오코노미야키", category: "일식", categoryClass: "cat-japanese", desc: "오사카식 철판 부침개에 소스와 가쓰오부시", img: "okonomiyaki japanese pancake" },
+      { name: "타코야키", category: "일식", categoryClass: "cat-japanese", desc: "동글동글 문어가 들어간 반죽 볼", img: "takoyaki octopus balls" },
+      { name: "야키토리 모듬", category: "일식", categoryClass: "cat-japanese", desc: "소금구이와 양념구이 닭꼬치 모듬", img: "yakitori chicken skewers" },
+
+      // === 양식 ===
+      { name: "바질크림파스타", category: "양식", categoryClass: "cat-western", desc: "바질 향 가득한 크림 소스 파스타", img: "basil cream pasta" },
+      { name: "관자오일파스타", category: "양식", categoryClass: "cat-western", desc: "탱글한 관자와 마늘 오일의 조화", img: "scallop aglio olio pasta" },
+      { name: "화이트라구소스를 곁들인 라자냐", category: "양식", categoryClass: "cat-western", desc: "층층이 쌓은 면과 고소한 화이트라구", img: "lasagna white ragu" },
+      { name: "까르보나라", category: "양식", categoryClass: "cat-western", desc: "계란 노른자와 판체타의 클래식 까르보나라", img: "carbonara pasta italian" },
+      { name: "알리오올리오 페페론치노", category: "양식", categoryClass: "cat-western", desc: "마늘과 올리브유, 페페론치노의 심플함", img: "aglio olio peperoncino pasta" },
+      { name: "봉골레 파스타", category: "양식", categoryClass: "cat-western", desc: "바지락 육수가 스며든 파스타", img: "vongole clam pasta" },
+      { name: "감베로니 로제 파스타", category: "양식", categoryClass: "cat-western", desc: "새우가 올라간 로제 소스 파스타", img: "shrimp rose pasta" },
+      { name: "트러플 크림 리조또", category: "양식", categoryClass: "cat-western", desc: "트러플 오일이 향긋한 크림 리조또", img: "truffle cream risotto" },
+      { name: "해산물 토마토 리조또", category: "양식", categoryClass: "cat-western", desc: "새우, 홍합, 오징어가 들어간 토마토 리조또", img: "seafood tomato risotto" },
+      { name: "마르게리타 피자", category: "양식", categoryClass: "cat-western", desc: "토마토, 모짜렐라, 바질의 클래식", img: "margherita pizza" },
+      { name: "페퍼로니 피자", category: "양식", categoryClass: "cat-western", desc: "매콤한 페퍼로니가 가득", img: "pepperoni pizza" },
+      { name: "고르곤졸라 피자", category: "양식", categoryClass: "cat-western", desc: "고르곤졸라 치즈에 꿀을 뿌려서", img: "gorgonzola honey pizza" },
+      { name: "스테이크 (립아이, 미디엄레어)", category: "양식", categoryClass: "cat-western", desc: "마블링 좋은 립아이를 미디엄레어로", img: "ribeye steak medium rare" },
+      { name: "안심 스테이크 (필레미뇽)", category: "양식", categoryClass: "cat-western", desc: "부드러운 안심을 레어로", img: "filet mignon steak" },
+      { name: "토마호크 스테이크", category: "양식", categoryClass: "cat-western", desc: "뼈가 붙은 거대한 립아이", img: "tomahawk steak" },
+      { name: "수비드 닭가슴살 샐러드", category: "양식", categoryClass: "cat-western", desc: "촉촉하게 수비드한 닭가슴살 위에 그린 샐러드", img: "chicken breast salad" },
+      { name: "시저 샐러드", category: "양식", categoryClass: "cat-western", desc: "로메인에 파마산, 크루통, 시저드레싱", img: "caesar salad" },
+      { name: "피시 앤 칩스", category: "양식", categoryClass: "cat-western", desc: "바삭한 흰살생선 튀김에 감자칩", img: "fish and chips british" },
+      { name: "클래식 치즈버거", category: "양식", categoryClass: "cat-western", desc: "두툼한 패티에 체다 치즈, 피클", img: "classic cheeseburger" },
+      { name: "스맥 버거", category: "양식", categoryClass: "cat-western", desc: "얇게 눌러 구운 패티의 바삭한 식감", img: "smash burger crispy" },
+      { name: "BBQ 풀드포크 샌드위치", category: "양식", categoryClass: "cat-western", desc: "오래 훈제한 돼지고기에 BBQ 소스", img: "pulled pork sandwich bbq" },
+      { name: "클럽 샌드위치", category: "양식", categoryClass: "cat-western", desc: "닭가슴살, 베이컨, 토마토, 양상추를 층층이", img: "club sandwich" },
+      { name: "뇨끼 크림소스", category: "양식", categoryClass: "cat-western", desc: "감자 뇨끼를 크림소스에 버무려", img: "gnocchi cream sauce" },
+      { name: "감바스 알 아히요", category: "양식", categoryClass: "cat-western", desc: "마늘 올리브유에 새우를 보글보글", img: "gambas al ajillo shrimp garlic" },
+      { name: "프렌치 양파 수프", category: "양식", categoryClass: "cat-western", desc: "카라멜라이즈 양파 수프에 치즈 그라탕", img: "french onion soup gratin" },
+      { name: "오믈렛과 크루아상 세트", category: "양식", categoryClass: "cat-western", desc: "폭신한 오믈렛에 버터 크루아상", img: "omelette croissant breakfast" },
+
+      // === 아시안 ===
+      { name: "쌀국수 (소고기 포)", category: "아시안", categoryClass: "cat-asian", desc: "맑은 소고기 육수에 얇은 쌀국수", img: "pho bo vietnamese beef noodle" },
+      { name: "분짜", category: "아시안", categoryClass: "cat-asian", desc: "숯불 돼지고기와 느억맘 소스에 쌀국수", img: "bun cha vietnamese grilled pork" },
+      { name: "반미 (바게트 샌드위치)", category: "아시안", categoryClass: "cat-asian", desc: "바삭한 바게트에 고수와 고기를 넣은", img: "banh mi vietnamese sandwich" },
+      { name: "팟타이", category: "아시안", categoryClass: "cat-asian", desc: "새콤달콤한 태국식 볶음 면", img: "pad thai noodles" },
+      { name: "톰얌꿍", category: "아시안", categoryClass: "cat-asian", desc: "새콤매콤한 태국식 새우 수프", img: "tom yum goong shrimp soup" },
+      { name: "그린 커리 (태국)", category: "아시안", categoryClass: "cat-asian", desc: "코코넛 밀크 베이스의 매콤한 그린 커리", img: "thai green curry" },
+      { name: "마싸만 커리", category: "아시안", categoryClass: "cat-asian", desc: "땅콩과 감자가 들어간 태국식 커리", img: "massaman curry thai" },
+      { name: "카오팟 (태국 볶음밥)", category: "아시안", categoryClass: "cat-asian", desc: "태국 향신료가 들어간 볶음밥", img: "khao pad thai fried rice" },
+      { name: "나시고렝", category: "아시안", categoryClass: "cat-asian", desc: "인도네시아식 매콤한 볶음밥", img: "nasi goreng indonesian fried rice" },
+      { name: "미고렝", category: "아시안", categoryClass: "cat-asian", desc: "인도네시아식 볶음면에 달걀 프라이", img: "mie goreng fried noodles" },
+      { name: "버터 치킨 커리", category: "아시안", categoryClass: "cat-asian", desc: "부드러운 토마토 크림의 인도식 커리", img: "butter chicken curry indian" },
+      { name: "탄두리 치킨", category: "아시안", categoryClass: "cat-asian", desc: "향신료에 재운 닭을 화덕에 구워", img: "tandoori chicken indian" },
+      { name: "난과 달 커리", category: "아시안", categoryClass: "cat-asian", desc: "인도식 렌틸콩 커리에 난 브레드", img: "naan dal curry indian" },
+      { name: "사테 꼬치 (말레이시아)", category: "아시안", categoryClass: "cat-asian", desc: "땅콩 소스를 곁들인 숯불 꼬치", img: "satay skewers peanut sauce" },
+      { name: "하이난 치킨라이스", category: "아시안", categoryClass: "cat-asian", desc: "부드러운 닭고기에 향긋한 밥", img: "hainanese chicken rice" },
+
+      // === 분식/간식 ===
+      { name: "치즈 떡볶이", category: "분식", categoryClass: "cat-snack", desc: "매콤한 떡볶이 위에 치즈를 듬뿍", img: "cheese tteokbokki" },
+      { name: "로제 떡볶이", category: "분식", categoryClass: "cat-snack", desc: "크림 로제 소스에 쫄깃한 떡", img: "rose tteokbokki cream" },
+      { name: "라볶이", category: "분식", categoryClass: "cat-snack", desc: "떡볶이에 라면 사리를 넣은", img: "rabokki ramen tteokbokki" },
+      { name: "김밥 + 라면 세트", category: "분식", categoryClass: "cat-snack", desc: "분식집 국민 조합", img: "kimbap ramyeon korean" },
+      { name: "충무김밥과 꼴뚜기무침", category: "분식", categoryClass: "cat-snack", desc: "밥만 만 김밥에 매콤한 꼴뚜기", img: "chungmu gimbap squid" },
+      { name: "쫄면", category: "분식", categoryClass: "cat-snack", desc: "쫄깃한 면에 매콤새콤 양념", img: "jjolmyeon chewy noodles spicy" },
+      { name: "만두전골", category: "분식", categoryClass: "cat-snack", desc: "만두와 채소를 넣고 끓인 전골", img: "mandu jeongol dumpling hot pot" },
+      { name: "교자 만두 + 볶음밥", category: "분식", categoryClass: "cat-snack", desc: "바삭한 군만두에 볶음밥 세트", img: "gyoza fried dumplings" },
+      { name: "핫도그 (감자 핫도그)", category: "분식", categoryClass: "cat-snack", desc: "감자로 감싼 바삭한 핫도그", img: "korean corn dog potato" },
+      { name: "양념치킨", category: "분식", categoryClass: "cat-snack", desc: "매콤달콤 양념의 바삭한 치킨", img: "yangnyeom chicken korean fried" },
+      { name: "간장치킨", category: "분식", categoryClass: "cat-snack", desc: "달콤짭짤한 간장 소스 치킨", img: "soy garlic korean fried chicken" },
+      { name: "후라이드치킨", category: "분식", categoryClass: "cat-snack", desc: "기본에 충실한 바삭한 후라이드", img: "korean fried chicken crispy" },
+      { name: "반반치킨 (양념 + 후라이드)", category: "분식", categoryClass: "cat-snack", desc: "양념과 후라이드를 반반으로", img: "korean half half chicken" },
+      { name: "치킨 + 맥주 세트", category: "분식", categoryClass: "cat-snack", desc: "치맥, 말이 필요 없는 조합", img: "chimaek korean chicken beer" },
+
+      // === 건강식/기타 ===
+      { name: "아보카도 연어 포케볼", category: "건강식", categoryClass: "cat-healthy", desc: "아보카도와 연어에 현미밥", img: "avocado salmon poke bowl" },
+      { name: "그릭 요거트 그래놀라 볼", category: "건강식", categoryClass: "cat-healthy", desc: "고단백 요거트에 그래놀라와 과일", img: "greek yogurt granola bowl" },
+      { name: "퀴노아 샐러드 볼", category: "건강식", categoryClass: "cat-healthy", desc: "퀴노아에 구운 채소와 발사믹", img: "quinoa salad bowl" },
+      { name: "두부 스테이크 정식", category: "건강식", categoryClass: "cat-healthy", desc: "노릇하게 구운 두부에 특제 소스", img: "tofu steak grilled" },
+      { name: "월남쌈 (라이스페이퍼 롤)", category: "건강식", categoryClass: "cat-healthy", desc: "새우와 채소를 라이스페이퍼에 싸서", img: "spring rolls rice paper vietnamese" },
+      { name: "닭가슴살 도시락", category: "건강식", categoryClass: "cat-healthy", desc: "현미밥에 닭가슴살과 브로콜리", img: "chicken breast meal prep" },
+      { name: "연어 스테이크와 구운 채소", category: "건강식", categoryClass: "cat-healthy", desc: "통연어를 구워 아스파라거스와 함께", img: "grilled salmon asparagus" },
+    ];
+
+    let isRolling = false;
+    let pickCount = 0;
+    let lastPickedIndex = -1;
+
+    const PEXELS_API_KEY = 'dbi6m80zoEieOwUhnmrUZfwtMmPh5ER39ZV5cM8qGnFQqqhKun69hzrp';
+    const imageCache = {};
+
+    async function fetchFoodImage(query) {
+      if (imageCache[query]) return imageCache[query];
+      try {
+        const res = await fetch(
+          `https://api.pexels.com/v1/search?query=${encodeURIComponent(query + ' food')}&per_page=5&orientation=square`,
+          { headers: { Authorization: PEXELS_API_KEY } }
+        );
+        const data = await res.json();
+        if (data.photos && data.photos.length > 0) {
+          const url = data.photos[Math.floor(Math.random() * data.photos.length)].src.medium;
+          imageCache[query] = url;
+          return url;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function pickFood() {
+      if (isRolling) return;
+      isRolling = true;
+
+      const btn = document.getElementById('pickBtn');
+      const foodName = document.getElementById('foodName');
+      const foodDesc = document.getElementById('foodDesc');
+      const badge = document.getElementById('categoryBadge');
+      const imageWrap = document.getElementById('foodImageWrap');
+
+      btn.classList.add('rolling');
+      badge.classList.remove('show');
+      foodDesc.classList.remove('show');
+      imageWrap.classList.remove('show');
+      imageWrap.classList.add('rolling');
+
+      // Rolling animation
+      let rollCount = 0;
+      const totalRolls = 20;
+      const rollInterval = setInterval(() => {
+        const randomFood = foods[Math.floor(Math.random() * foods.length)];
+        foodName.textContent = randomFood.name;
+        foodName.classList.add('show');
+        foodName.classList.add('rolling-text');
+        rollCount++;
+
+        if (rollCount >= totalRolls) {
+          clearInterval(rollInterval);
+
+          // Final pick (avoid same as last)
+          let finalIndex;
+          do {
+            finalIndex = Math.floor(Math.random() * foods.length);
+          } while (finalIndex === lastPickedIndex && foods.length > 1);
+
+          lastPickedIndex = finalIndex;
+          const picked = foods[finalIndex];
+
+          foodName.classList.remove('rolling-text');
+          foodName.textContent = picked.name;
+          foodName.classList.add('show');
+
+          // Show category badge
+          badge.textContent = picked.category;
+          badge.className = `category-badge ${picked.categoryClass} show`;
+
+          // Show description
+          foodDesc.textContent = picked.desc;
+          foodDesc.classList.add('show');
+
+          // Show image
+          imageWrap.classList.remove('rolling');
+          fetchFoodImage(picked.img).then(url => {
+            if (url) {
+              const imgEl = new Image();
+              imgEl.className = 'food-image';
+              imgEl.alt = picked.name;
+              imgEl.onload = () => {
+                imageWrap.innerHTML = '';
+                imageWrap.appendChild(imgEl);
+                imageWrap.classList.add('show');
+              };
+              imgEl.onerror = () => {
+                imageWrap.innerHTML = '<span class="food-image-placeholder">&#127860;</span>';
+                imageWrap.classList.add('show');
+              };
+              imgEl.src = url;
+            } else {
+              imageWrap.innerHTML = '<span class="food-image-placeholder">&#127860;</span>';
+              imageWrap.classList.add('show');
+            }
+          });
+
+          btn.classList.remove('rolling');
+          btn.textContent = '다시 고르기!';
+          isRolling = false;
+
+          pickCount++;
+          document.getElementById('counter').textContent = `총 ${foods.length}개의 메뉴 중 ${pickCount}번째 선택`;
+        }
+      }, 60);
+    }
+  </script>
+</body>
+</html>
